@@ -1,10 +1,7 @@
 name = "cloudflare-nav"
 type = "javascript"
+compatibility_date = "2024-04-29"
 
-[vars]
-AUTH_KEY = "your_actual_password_here"  # 必须替换为实际密码
-PW = "your_actual_password_here"  # 向后兼容，与AUTH_KEY保持一致
-DEBUG = false
 
 
 

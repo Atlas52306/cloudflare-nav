@@ -1,0 +1,7 @@
+[vars]
+AUTH_KEY = "your_actual_password_here"  # 必须替换为实际密码
+PW = "your_actual_password_here"  # 向后兼容，与AUTH_KEY保持一致
+ENVIRONMENT = "production"  # 明确环境标识
+DEBUG = false
+HOME_URL = "/"  # 设置主页URL路径
+

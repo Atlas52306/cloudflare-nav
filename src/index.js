@@ -293,7 +293,9 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
         </div>
         <div style="display: flex; gap: 10px;">
           <button type="submit" style="flex: 1; background: #4CAF50; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s;">更新</button>
-          <button type="button" onclick="document.getElementById('editForm').style.display='none'; document.getElementById('announcements').style.display='block';" style="flex: 1; background: #f44336; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s;">取消</button>
+          <button type="button" onclick="document.getElementById('editForm').style.display='none';
+          document.getElementById('announcements').style.opacity = '1';
+          document.getElementById('announcements').style.pointerEvents = 'auto'; // 恢复点击事件" style="flex: 1; background: #f44336; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-size: 16px; transition: background-color 0.3s;">取消</button>
         </div>
       </form>
     </div>
@@ -368,6 +370,7 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
           document.getElementById('editContent').value = data.content;
           document.getElementById('editForm').style.display = 'block';
           document.getElementById('announcements').style.opacity = '0.5'; // 半透明公告列表
+          document.getElementById('announcements').style.pointerEvents = 'none'; // 禁用点击事件
         } catch (error) {
           console.error('错误:', error);
           alert('获取公告数据失败');

@@ -1,12 +1,15 @@
 name = "cloudflare-nav"
 compatibility_date = "2024-04-29"
 main = "src/index.js"
-
-[kv_namespaces]
 # 绑定KV命名空间
+[[kv_namespaces]]
 binding = "KV"
-id = "" # 这里需要填写你的KV命名空间ID
-preview_id = "" # 预览环境的KV命名空间ID
+id = ""
+
+[vars]
+HOME_URL = ""
+PW = ""
+
 
 
 

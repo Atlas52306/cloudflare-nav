@@ -38,7 +38,6 @@ Cloudflare Worker绑定github部署
 
 
 ## 技术栈
-
 - Cloudflare Workers
 - Cloudflare KV存储
 - HTML5/CSS3/JavaScript

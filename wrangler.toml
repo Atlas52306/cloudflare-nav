@@ -6,9 +6,9 @@ main = "src/index.js"
 #binding = "KV"
 #id = ""
 #
-#[vars]
-#HOME_URL = ""
-#PW = ""
+[vars]
+HOME_URL = ""
+PW = ""
 
 
 

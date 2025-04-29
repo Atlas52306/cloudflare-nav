@@ -1,16 +1,5 @@
 # 公告系统API文档
 
-## 认证相关
-- **登录验证**  
-  - 路径：`/admin` (GET/POST)
-  - 请求参数：`password` (表单字段)
-  - 成功：设置认证Cookie并重定向
-  - 失败：返回401状态码和错误页面
-
-- **退出登录**  
-  - 路径：`/logout` (GET)
-  - 效果：清除认证Cookie并重定向
-
 ## 公告管理API
 - **添加公告**  
   - 路径：`/api/announcements` (POST)

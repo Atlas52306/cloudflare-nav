@@ -4,7 +4,7 @@ main = "src/index.js"
 # 绑定KV命名空间
 [[kv_namespaces]]
 binding = "KV"
-id = ""
+id = "8bb613c033464e5ba53be15c7dc44dc9"
 #
 [vars]
 HOME_URL = ""

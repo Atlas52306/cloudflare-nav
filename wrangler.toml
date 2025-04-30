@@ -9,6 +9,7 @@ id = ""
 [vars]
 HOME_URL = ""
 PW = ""
+API_TOKEN = ""
 
 
 

@@ -9,6 +9,25 @@
 - 分页显示公告
 - 管理界面支持添加、编辑、删除公告
 - 响应式设计，适配移动设备
+- API Token认证，支持外部应用调用
+
+## API接口
+
+本项目现已支持通过API Token进行认证，允许外部应用程序调用API接口。详细的API文档请参阅[API.md](./API.md)文件。
+
+### 配置API Token
+
+1. 在Cloudflare Workers的环境变量中添加`API_TOKEN`变量
+2. 设置一个安全的、随机生成的字符串作为Token值
+3. 重新部署Worker使配置生效
+
+### 使用API Token
+
+在请求头中添加`Authorization`头进行认证：
+
+```
+Authorization: Bearer YOUR_API_TOKEN
+```
 
 ## 部署指南
 

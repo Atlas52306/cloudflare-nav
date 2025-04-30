@@ -11,6 +11,7 @@
 // 常量定义
 const COOKIE_NAME = 'token';
 const COOKIE_EXPIRY = 60 * 60 * 24 * 7; // 7天有效期
+const API_TOKEN_HEADER = 'Authorization'; // API Token请求头名称
 
 /**
  * 登录页面HTML模板
@@ -144,6 +145,33 @@ function verifyPassword(request, env) {
 }
 
 /**
+ * 验证API Token
+ * @param {Request} request - 请求对象
+ * @param {Object} env - 环境变量
+ * @returns {boolean} 验证是否通过
+ */
+function verifyApiToken(request, env) {
+  // 如果没有设置API Token，则不允许API访问
+  if (!env.API_TOKEN) {
+    return false;
+  }
+  
+  // 从请求头中获取Authorization Token
+  const authHeader = request.headers.get(API_TOKEN_HEADER) || '';
+  
+  // 检查Token格式 (Bearer token格式或直接token)
+  let token = '';
+  if (authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7).trim();
+  } else {
+    token = authHeader.trim();
+  }
+  
+  // 验证Token是否匹配
+  return token === env.API_TOKEN;
+}
+
+/**
  * 创建带有认证Cookie和缓存控制的重定向响应
  */
 function createAuthRedirect(redirectUrl, password) {
@@ -204,19 +232,19 @@ function createLogoutRedirect(request, env) {
 /**
  * 公告列表和管理页面HTML模板
  */
-function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath) {
+function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath, env) {
   // 生成公告列表HTML
   let announcementList = '';
   for (let i = 0; i < announcements.length; i++) {
     const announcement = announcements[i];
     // 添加空值检查，确保title和content存在
-    const title = announcement.title || '无标题';
+    const announcementTitle = announcement.title || '无标题';
     const content = announcement.content || '无内容';
     const id = announcement.id || '';
 
     announcementList += `
       <div class="announcement" style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <h2 style="color: #333; margin-top: 0; margin-bottom: 10px;">${title}</h2>
+        <h2 style="color: #333; margin-top: 0; margin-bottom: 10px;">${announcementTitle}</h2>
         <p style="color: #666; line-height: 1.6; margin-bottom: 15px;">${content.replace(/\n/g, '<br>')}</p>
         ${isAdmin && id ? `
           <div class="admin-actions" style="display: flex; gap: 10px;">
@@ -305,6 +333,7 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
   const adminScript = isAdmin ? `
     <script>
       const basePath = "${basePath}";
+      const apiToken = "${env ? (env.API_TOKEN || '') : ''}";
       
       // 添加公告
       async function addAnnouncement(event) {
@@ -319,6 +348,7 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + apiToken
             },
             body: JSON.stringify({ 
               id: customId || undefined, // 如果为空则不发送此字段
@@ -334,7 +364,7 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
             alert(errorData.error || '添加公告失败');
           }
         } catch (error) {
-          console.error('错误:', error);
+          // 添加公告失败处理
           alert('添加公告失败');
         }
       }
@@ -344,7 +374,10 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
         if (confirm('确定要删除这条公告吗？')) {
           try {
             const response = await fetch(basePath + '/api/announcements/' + id, {
-              method: 'DELETE'
+              method: 'DELETE',
+              headers: {
+                'Authorization': 'Bearer ' + apiToken
+              }
             });
             
             if (response.ok) {
@@ -353,7 +386,7 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
               alert('删除公告失败');
             }
           } catch (error) {
-            console.error('错误:', error);
+            // 删除公告失败处理
             alert('删除公告失败');
           }
         }
@@ -362,7 +395,11 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
       // 编辑公告 - 显示表单
       async function editAnnouncement(id) {
         try {
-          const response = await fetch(basePath + '/api/announcements/' + id);
+          const response = await fetch(basePath + '/api/announcements/' + id, {
+            headers: {
+              'Authorization': 'Bearer ' + apiToken
+            }
+          });
           const data = await response.json();
           
           document.getElementById('editId').value = id;
@@ -389,6 +426,7 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + apiToken
             },
             body: JSON.stringify({ id, title, content })
           });
@@ -400,7 +438,7 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
             alert(errorData.error || '更新公告失败');
           }
         } catch (error) {
-          console.error('错误:', error);
+          // 更新公告失败处理
           alert('更新公告失败');
         }
         document.getElementById('announcements').style.display = 'block'; // 显示公告列表
@@ -548,7 +586,30 @@ function getAnnouncementHtml(title, announcements, isAdmin, pagination, basePath
  * 处理身份验证和登录流程
  */
 async function handleAuth(request, env) {
-  // 已验证通过
+  // 检查是否是API请求，如果是API请求则尝试验证API Token
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const basePath = env.HOME_URL || '/';
+  const normalizedBasePath = basePath.startsWith('/') ? basePath : '/' + basePath;
+  
+  // 判断是否为API请求
+  if (path.includes('/api/') && path.startsWith(normalizedBasePath + '/api/')) {
+    // 如果API Token验证通过，则允许访问
+    if (verifyApiToken(request, env)) {
+      return null;
+    }
+    
+    // API请求未通过认证，返回JSON格式的错误信息
+    return new Response(JSON.stringify({ error: "认证失败，请提供有效的API Token" }), {
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      }
+    });
+  }
+  
+  // 常规Cookie验证
   if (verifyPassword(request, env)) {
     return null;
   }
@@ -556,6 +617,9 @@ async function handleAuth(request, env) {
   // 处理登录表单提交
   if (request.method === 'POST') {
     try {
+      // 检查是否是API登录请求
+      const isApiLogin = path.includes('/api/login');
+      
       // 提取密码
       let password = '';
       const contentType = request.headers.get('Content-Type') || '';
@@ -580,7 +644,18 @@ async function handleAuth(request, env) {
       const actualPassword = env.AUTH_KEY || env.PW;
 
       if (password === actualPassword) {
-        // 构建重定向URL
+        // 如果是API登录请求，返回JSON成功响应
+        if (isApiLogin) {
+          return new Response(JSON.stringify({ success: true }), {
+            status: 200,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+            }
+          });
+        }
+        
+        // 常规登录请求，构建重定向URL
         let redirectUrl;
         try {
           const currentUrl = new URL(request.url);
@@ -594,22 +669,59 @@ async function handleAuth(request, env) {
         // 创建带认证Cookie的重定向
         return createAuthRedirect(redirectUrl, actualPassword);
       } else {
-        // 密码不匹配，显示错误
-        return createNoCacheResponse(getLoginHtml(true), {
-          headers: { 'Content-Type': 'text/html; charset=utf-8' },
-          status: 401
-        });
+        // 密码不匹配
+        if (isApiLogin) {
+          // API登录请求返回JSON错误响应
+          return new Response(JSON.stringify({ error: "密码错误" }), {
+            status: 401,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+            }
+          });
+        } else {
+          // 常规登录请求显示HTML错误页面
+          return createNoCacheResponse(getLoginHtml(true), {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' },
+            status: 401
+          });
+        }
       }
     } catch (error) {
       // 处理错误
-      return createNoCacheResponse(getLoginHtml(true), {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-        status: 400
-      });
+      const isApiLogin = path.includes('/api/login');
+      if (isApiLogin) {
+        // API登录请求返回JSON错误响应
+        return new Response(JSON.stringify({ error: "请求处理失败" }), {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+          }
+        });
+      } else {
+        // 常规登录请求显示HTML错误页面
+        return createNoCacheResponse(getLoginHtml(true), {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          status: 400
+        });
+      }
     }
   }
 
-  // 显示登录页面
+  // 检查是否是API请求
+  if (path.includes('/api/')) {
+    // API请求返回JSON格式的错误响应
+    return new Response(JSON.stringify({ error: "认证失败，请提供有效的认证信息" }), {
+      status: 401,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate'
+      }
+    });
+  }
+  
+  // 非API请求显示HTML登录页面
   return createNoCacheResponse(getLoginHtml(), {
     headers: { 'Content-Type': 'text/html; charset=utf-8' },
     status: 401
@@ -824,16 +936,8 @@ async function handleRequest(request, env, ctx) {
         // 获取公告列表并渲染页面
         const result = await getAnnouncements(env, page, 10);
 
-        // 检查是否有错误信息
-        if (result.error) {
-          return createNoCacheResponse(`<html><body><h1>加载管理页面失败</h1><p>错误信息: ${result.error}</p><p><a href="${basePath}/admin?_cb=${Date.now()}">点击重试</a></p></body></html>`, {
-            status: 500,
-            headers: { 'Content-Type': 'text/html; charset=utf-8' }
-          });
-        }
-
-        const html = getAnnouncementHtml('公告管理', result.announcements, true, result.pagination, basePath);
-
+        // const html = getAnnouncementHtml('公告列表', result.announcements, false, result.pagination, basePath, env);
+        const html = getAnnouncementHtml('公告管理', result.announcements, true, result.pagination, basePath, env);
         return createNoCacheResponse(html, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' }
         });
@@ -1201,6 +1305,11 @@ export default {
       // 确保环境变量正确映射
       if (env.AUTH_KEY === undefined && env.vars && env.vars.AUTH_KEY) {
         env.AUTH_KEY = env.vars.AUTH_KEY;
+      }
+      
+      // 映射API Token环境变量
+      if (env.API_TOKEN === undefined && env.vars && env.vars.API_TOKEN) {
+        env.API_TOKEN = env.vars.API_TOKEN;
       }
 
       // 确保KV绑定正确
